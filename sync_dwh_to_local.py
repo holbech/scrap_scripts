@@ -9,7 +9,7 @@ base_cmd = "s3cmd --no-progress sync %s %s"
 
 
 def get_content(name, path, out_dir, dates):
-    subdirs = ['day', 'midnight'] if name == "sessions" else ['']
+    subdirs = ['day', 'midnight'] if name in ("augmented-sessions", "sessions") else ['']
     for d in dates:
         for s in subdirs:
             if s:

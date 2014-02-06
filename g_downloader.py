@@ -2,6 +2,7 @@
 import gzip
 import json
 import os
+import pickle
 import string
 import urllib2
 import xml.etree.ElementTree as ET
@@ -26,6 +27,16 @@ def get_ids(filename='/tmp/ids'):
     with open(filename, 'w') as id_file:
         id_file.write('\n'.join( str(i) for i in all_id ) + '\n')
     print "All done"
+
+def get_collection(username, filename='/tmp/collection'):
+    with open(filename, 'w') as id_file:
+        result = ET.fromstring(urllib2.urlopen('http://www.boardgamegeek.com/xmlapi/collection/' + username).read())
+        ids = set()
+        for item in result.iter('item'):
+            status = item.find('status')
+            if status is not None and status.attrib['own'] != "0":
+                ids.add(item.attrib['objectid'])
+        pickle.dump(tuple(ids), id_file)
 
 def get_expansion_ids(filename='/tmp/exp_ids'):
     all_id = set()
@@ -119,7 +130,12 @@ def get_expansion_connections(in_file_dir, out_file):
     with gzip.GzipFile(out_file, 'w') as output_file:
         json.dump(expansion_map, output_file)
               
-def rank(in_file_dir, expansion_connection_file, players=1, algorithm=1):
+def rank(in_file_dir, expansion_connection_file, players=1, algorithm=1, collection_file=None):
+    if collection_file:
+        with open(collection_file, 'r') as cf:
+            collection = pickle.load(cf)
+    else:
+        collection = None
     with gzip.GzipFile(expansion_connection_file, 'r') as em_file:
         expansion_map = json.load(em_file)
     games = {}
@@ -134,12 +150,16 @@ def rank(in_file_dir, expansion_connection_file, players=1, algorithm=1):
                         games[game['id']] = game
     players = str(players)
     def rating(game):
-        if not game.get('usersrated'):
+        if not game.get('usersrated') or (collection and game['id'] not in collection):
             return 0.0
         try:
             base_rate = float(game['bayesaverage'])
-            player_votes = { v1: int(v2) for (v1,v2) in game['players_votes'].get(players,()) }
-            if not player_votes:
+            all_player_votes = { p: { v1: int(v2) for (v1,v2) in votes }
+                                 for p, votes in game['players_votes'].iteritems() }
+            all_votes = sum( v for votes in all_player_votes.itervalues() for v in votes.itervalues()  )
+            avg_votes_cast = all_votes/float(len(all_player_votes))
+            player_votes = all_player_votes.get(players, {})
+            if not player_votes or sum(player_votes.itervalues()) < (avg_votes_cast/4):
                 return 0.0
             if algorithm == 1:
                 for_votes = player_votes['Recommended']/2.0 + player_votes['Best']
@@ -165,8 +185,9 @@ def rank(in_file_dir, expansion_connection_file, players=1, algorithm=1):
             print (u'%s - %s (%s/%s): %2.2f' % (exp['name'], game['name'], exp['id'], game['id'], r)).encode('utf-8')
     
 if __name__ == '__main__':
+    # get_collection("holbech", "/home/holbech/ratings/collection")
     # get_ids()
     #get_ratings('/home/holbech/ratings/ratings')
     #get_expansion_connections('/home/holbech/ratings/', '/home/holbech/expansion_connections.json.gz')
-    rank('/home/holbech/ratings/', '/home/holbech/expansion_connections.json.gz', algorithm=2)
+    rank('/home/holbech/ratings/', '/home/holbech/expansion_connections.json.gz', players=4, algorithm=1, collection_file="/home/holbech/ratings/collection")
     

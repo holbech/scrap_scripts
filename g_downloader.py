@@ -189,5 +189,5 @@ if __name__ == '__main__':
     # get_ids()
     #get_ratings('/home/holbech/ratings/ratings')
     #get_expansion_connections('/home/holbech/ratings/', '/home/holbech/expansion_connections.json.gz')
-    rank('/home/holbech/ratings/', '/home/holbech/expansion_connections.json.gz', players=4, algorithm=1, collection_file="/home/holbech/ratings/collection")
+    rank('/home/holbech/ratings/', '/home/holbech/expansion_connections.json.gz', players=3, algorithm=1, collection_file="/home/holbech/ratings/collection")
     

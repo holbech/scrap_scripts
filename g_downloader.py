@@ -4,6 +4,8 @@ import json
 import os
 import pickle
 import string
+import sys
+import time
 import urllib2
 import xml.etree.ElementTree as ET
 from urllib2 import HTTPError
@@ -56,22 +58,34 @@ def get_expansion_ids(filename='/tmp/exp_ids'):
         id_file.write('\n'.join( str(i) for i in all_id ) + '\n')
     print "All done"
 
-def get_ratings(out_filename):
+def get_ratings(out_filename, ids_file=None):
+    if ids_file:
+        ids = tuple( l.strip() for l in open(ids_file).readlines() if l.strip() )
+    else:
+        ids = tuple( str(i) for i in xrange(0, 170000) )
     stride = 100
-    for start_index in xrange(0, 160000, stride):
-        batch_ids = ','.join( str(i) for i in xrange(start_index,start_index+stride) )
-        filename = out_filename + '_%d_to_%d.json.gz' % (start_index, start_index+stride-1)
+    for start_index in xrange(0, len(ids), stride):
+        batch_ids = ','.join(ids[start_index:start_index+stride])
+        first = ids[start_index]
+        last = ids[start_index+stride-1] if len(ids) >= start_index+stride-1 else ids[-1]
+        filename = out_filename + '_%s_to_%s.json.gz' % (first, last)
         if os.path.exists(filename):
-            print "Skipping %d to %d" % (start_index, start_index+stride-1)
+            print "Skipping %s to %s" % (first, last)
         else:
-            print "Getting %d to %d" % (start_index, start_index+stride-1)
+            print "Getting %s to %s" % (first, last)
             games = []
             for bgtype in ('boardgame', 'boardgameexpansion'): 
-                result = ET.fromstring(urllib2.urlopen('http://www.boardgamegeek.com/xmlapi2/thing?id=%s&stats=1&type=%s' % (batch_ids, bgtype)).read())
+                for attempt in xrange(5):
+                    try:
+                        result = ET.fromstring(urllib2.urlopen('http://www.boardgamegeek.com/xmlapi2/thing?id=%s&stats=1&type=%s' % (batch_ids, bgtype)).read())
+                    except Exception:
+                        time.sleep(2**attempt)
+                    else:
+                        break
                 for item in result.iter('item'):
                     if item.attrib['type'] == bgtype:
                         game = { 'type': bgtype, 'id': item.attrib['id'] }
-                        for attr in ('name', 'minplayers', 'maxplayers'):
+                        for attr in ('name', 'minplayers', 'maxplayers', 'yearpublished'):
                             game[attr] = item.find(attr)
                             if game[attr] is not None:
                                 game[attr] = game[attr].attrib['value']
@@ -130,7 +144,7 @@ def get_expansion_connections(in_file_dir, out_file):
     with gzip.GzipFile(out_file, 'w') as output_file:
         json.dump(expansion_map, output_file)
               
-def rank(in_file_dir, expansion_connection_file, players=1, algorithm=1, collection_file=None):
+def rank(in_file_dir, expansion_connection_file, players=1, algorithm=1, collection_file=None, rank_file=None):
     if collection_file:
         with open(collection_file, 'r') as cf:
             collection = pickle.load(cf)
@@ -174,20 +188,23 @@ def rank(in_file_dir, expansion_connection_file, players=1, algorithm=1, collect
         except Exception as ex:
             print ex, game
             return 0.0
-    print "Games:"
+    output = open(rank_file, 'w') if rank_file else sys.stdout
+    output.write("Games:\n")
     for r, game in sorted(( (rating(g),g) for g in games.itervalues() ), reverse=True):
         if r > 0.0:
-            print (u'%s (%s): %2.2f' % (game['name'], game['id'], r)).encode('utf-8')
-    print "Expansions:"
+            output.write((u'%s [%s] (%s): %2.2f\n' % (game['name'], game['yearpublished'], game['id'], r)).encode('utf-8'))
+    output.write("Expansions:\n")
     for r, exp in sorted(( (rating(e),e) for e in expansions.itervalues() ), reverse=True):
         game = games.get(expansion_map.get(exp['id']))
         if r > 0.0 and game is not None:
-            print (u'%s - %s (%s/%s): %2.2f' % (exp['name'], game['name'], exp['id'], game['id'], r)).encode('utf-8')
+            output.write( (u'%s - %s [%s/%s] (%s/%s): %2.2f\n' % (exp['name'], game['name'], exp['yearpublished'], game['yearpublished'], exp['id'], game['id'], r)).encode('utf-8'))
+    if rank_file:
+        output.close()
     
 if __name__ == '__main__':
     # get_collection("holbech", "/home/holbech/ratings/collection")
     # get_ids()
     #get_ratings('/home/holbech/ratings/ratings')
     #get_expansion_connections('/home/holbech/ratings/', '/home/holbech/expansion_connections.json.gz')
-    rank('/home/holbech/ratings/', '/home/holbech/expansion_connections.json.gz', players=3, algorithm=1, collection_file="/home/holbech/ratings/collection")
+    rank('/home/holbech/bgg/', '/home/holbech/bgg/connections', algorithm=1)
     

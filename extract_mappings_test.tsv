@@ -1,0 +1,6 @@
+DATE	ID	i-BrowserAndOSAndCustomerCodeMatch	CUST	100	6	u1	CUST	u2	IP	BrowserAndOSAndCustomerCodeMatch	0
+DATE	ID	i-BrowserAndOSMatch	CUST	100	5	u1	CUST	u2	IP	BrowserAndOSMatch	0
+DATE	ID	i-OSAndCustomerCodeMatch	CUST	100	4	u1	CUST	u2	IP	OSAndCustomerCodeMatch	0
+DATE	ID	i-CustomerCodeMatch	CUST	100	3	u1	CUST	u2	IP	CustomerCodeMatch	0
+DATE	ID	i-OSMatch	CUST	100	2	u1	CUST	u2	IP	OSMatch	0
+DATE	ID	i-NoMatch	CUST	100	1	u1	CUST	u2	IP	NoMatch	0

@@ -98,4 +98,3 @@ with gzip.open(sys.argv[1]) as input_file:
                 
 for f in result_files.itervalues():
     f.close()
-            

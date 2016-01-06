@@ -33,7 +33,7 @@ def _extract(some_record, field_names):
     result = some_record
     for f in field_names:
         result = result.get(f, {})
-    return result if not isinstance(result,dict) else None
+    return result if not isinstance(result,dict) else "FieldNotFound"
 
 def extract(some_record, fields):
     print '\t'.join( str(_extract(some_record,f)) for f in fields )

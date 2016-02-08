@@ -1,0 +1,5 @@
+#!/bin/bash
+
+mkdir $1
+find imp_files/ -iname $1'*' | xargs -i -P 10 mv {} $1/
+

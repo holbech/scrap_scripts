@@ -4,11 +4,13 @@ import argparse
 from collections import defaultdict
 from itertools import chain
 import sys
+from multiprocessing import Pool
 
 import fastavro as avro
 
 parser = argparse.ArgumentParser(description='Extracts fields from avro-files to tsv lines')
 parser.add_argument('filenames', nargs='+', help='if extension of file is .lst or .txt it will be assumed to be a file of filenames')
+parser.add_argument('-m', '--multiprocessing', type=int, default=1, help='Parallel processes to run')
 parser.add_argument('-f', '--field', nargs='*', help='Field to extract')
 parser.add_argument('-l', '--list-fields', action='store_true', help='List fields in files')
 parser.add_argument('-a', '--add-header', action='store_true', help='Add field names as header to output')
@@ -67,8 +69,9 @@ def extract(some_record, fields):
     return [ _extract(some_record, f) for f in fields ]
 
 global_fields = tuple( f.split('/') for f in args.field or () )
-for filename in chain.from_iterable( expand(f) for f in args.filenames ):
+def extract_file(filename):
     print >> sys.stderr, "Processing " + filename
+    result = []
     with open(filename, 'rb') as avro_file:
         reader = avro.reader(avro_file)
         schema = reader.schema
@@ -91,7 +94,7 @@ for filename in chain.from_iterable( expand(f) for f in args.filenames ):
                 sys.stderr.write("Read %d lines of input\r" % (index,))
             extracted_values = extract(record, fields)
             if samples is None:
-                print '\t'.join(extracted_values)
+                result.append('\t'.join(extracted_values))
         if samples:
             print 'Samples values from %s:' % (filename,)
             for f in fields:
@@ -99,5 +102,14 @@ for filename in chain.from_iterable( expand(f) for f in args.filenames ):
                 for v in sorted(samples[f]):
                     print '    ' + v
         print >> sys.stderr, "Read %d lines of input\r" % (index,)
+    return result
 
-
+filenames = chain.from_iterable( expand(f) for f in args.filenames )
+if args.multiprocessing > 1 and not args.sample_values:
+    if args.add_header:
+        sys.stdout.writelines( l + '\n' for l in extract_file(next(filenames)) )
+    pool = Pool(args.multiprocessing)
+    sys.stdout.writelines( l + '\n' for l in chain.from_iterable(pool.imap_unordered(extract_file, filenames, chunksize=1)) )
+else:
+    for fn in filenames:
+        sys.stdout.writelines( l + '\n' for l in extract_file(fn) )

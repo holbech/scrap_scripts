@@ -47,15 +47,29 @@ class SampleCollector(object):
 
 samples = (args.sample_values or None) and defaultdict(SampleCollector)
 
+def _format(value):
+    if value is None:
+        return ""
+    if isinstance(value, basestring):
+        return value
+    try:
+        return ujson.dumps(value)
+    except:
+        if isinstance(value, (tuple, list)):
+            return '[' + ','.join( _format(v) for v in value ) + ']'
+        if isinstance(value, dict):
+            return '{' + ','.join( _format(v) for v in value ) + '}'
+        if not isinstance(value, basestring):
+            return str(value)
+
+NOT_FOUND = object()
+
 def _extract(some_record, field_names):
     result = some_record
     for f in field_names:
-        result = result.get(f, {})
-    if not isinstance(result,dict):
-        if result is None:
-            result = ""
-        if not isinstance(result, basestring):
-            result = str(result)
+        result = result.get(f, NOT_FOUND)
+    if result is not NOT_FOUND:
+        result = _format(result)
         result = result.replace('\t','\\t').replace('\n','\\n')
         if isinstance(result, unicode):
             result = result.encode('utf-8')

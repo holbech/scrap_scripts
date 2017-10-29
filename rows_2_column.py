@@ -7,7 +7,10 @@ group_column = int(sys.argv[1]) - 1
 
 value_column = int(sys.argv[2]) - 1 
 
-dataset = seq([ line.rstrip('\n').split('\t') for line in sys.stdin if line.strip() ])
+split_on_space = len(sys.argv) > 2
+
+dataset = seq([ line.rstrip('\n').split() if split_on_space else line.rstrip('\n').split('\t')
+                for line in sys.stdin if line.strip() ])
 
 remaining_indices = [ i for i,_ in enumerate(dataset[0]) if i not in (group_column, value_column) ]
 

@@ -3,7 +3,7 @@
 if __name__ == '__main__':
     import argparse
     import sys
-    import ujson as json
+    import json
     from itertools import chain
 
     parser = argparse.ArgumentParser(description='Converts nested json lines to tsv lines')

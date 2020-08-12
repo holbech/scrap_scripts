@@ -44,6 +44,23 @@ wf =  {
  'max': 5
 }
 
+wf =  {
+ 'd/click': 2,
+ 'd/eopen': 2,
+ 'd/esp': 2,
+ 'd/imp': 2,
+ 'd/imps': 2,
+ 'd/iopen': 2,
+ '3m': 3,
+ 'acc': 3,
+ 'accx': 3,
+ 'd/sourced': 1,
+ 'd/weblogin':2,
+ 'lrxd': 1,
+ 'max': 3
+}
+
+
 none_value = str(max(wf.itervalues()) + 1)
 
 if args.translate:
